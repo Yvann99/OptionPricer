@@ -1,0 +1,139 @@
+# OptionPricer
+
+**Le métier de vendeur d'options, en Python : pricing, couverture dynamique et lecture de la volatilité.**
+
+> **Question du projet :** un vendeur d'options qui couvre intelligemment et lit l'état de la volatilité fait-il mieux qu'un vendeur naïf ?
+
+---
+
+## Le fil rouge
+
+> **Le prix d'une option est le coût de sa réplication. Un vendeur couvert ne parie donc pas sur la direction du marché, mais sur sa volatilité.**
+
+Chaque phase du projet creuse une facette de cette phrase :
+
+| Phase | Verbe | Question |
+|---|---|---|
+| **0. Socle** | construire | Les outils : pricer, simulateurs, moteur de couverture |
+| **A. Anatomie du P&L** | comprendre | D'où viennent les gains et pertes d'un vendeur couvert ? |
+| **C. Couverture optimale** | couvrir | Quelle est la meilleure façon de rééquilibrer ? |
+| **B. Vendeur adaptatif** | décider | Quoi vendre, et quand, selon l'état de la volatilité ? |
+
+L'ordre est volontaire : **A → C → B**. C reste dans le cadre de A (une option, plusieurs règles de couverture). B change d'échelle (un portefeuille dans le temps) et réutilise la meilleure couverture trouvée en C.
+
+---
+
+## Feuille de route
+
+### Phase 0 : le socle
+
+| Statut | Étape | Fichier | Contenu | Lien avec le cours |
+|---|---|---|---|---|
+| ⬜ | **1. Prix** | `pricer/black_scholes.py` | Payoff, $d_1$, $d_2$, prix d'un call et d'un put | Prix = $\mathbb E^{\mathbb Q}[e^{-rT}h(S_T)]$ |
+| ⬜ | **2. Grecques** | `pricer/black_scholes.py` | Delta, gamma, vega, theta, volatilité implicite | Dérivées du prix, EDP de Black–Scholes |
+| ⬜ | **3. Vectorisation** | `pricer/black_scholes.py` | Pricer des milliers de cas d'un coup (numpy) | Indispensable pour la suite |
+| ⬜ | **4. Simulateurs** | `pricer/market.py` | MBG, Heston, MBG à régimes, Merton (sauts) | EDS, mouvement brownien géométrique |
+| ⬜ | **5. Couverture** | `pricer/hedging.py` | Portefeuille autofinancé : prime, delta, rééquilibrage, coûts | Intégrale d'Itô $\int \varphi\,dS$, processus adaptés |
+| ⬜ | **6. Attribution** | `pricer/attribution.py` | P&L décomposé en delta, gamma, theta, carry, coûts | Formule d'Itô discrète |
+
+**Tests de validation du socle** (chacun vérifie une vérité indépendante du code) :
+- [ ] Valeurs de référence (Hull) : call $= 4{,}7594$, put $= 0{,}8086$
+- [ ] Parité call-put : $C - P = S - Ke^{-rT}$
+- [ ] Grecques ≈ différences finies
+- [ ] EDP de Black–Scholes : $\Theta + rS\Delta + \tfrac12\sigma^2S^2\Gamma - rV = 0$
+- [ ] Monte-Carlo sous $\mathbb Q$ ≈ formule fermée
+- [ ] Prix actualisé martingale sous $\mathbb Q$ : $\mathbb E[e^{-rt}S_t] = S_0$
+- [ ] Volatilité réalisée ≈ $\sqrt{[\log S]_T / T}$ (variation quadratique)
+
+### Phase A : anatomie du P&L (comprendre)
+
+Des expériences dont on **connaît le résultat théorique** :
+
+- [ ] **Erreur de couverture en $1/\sqrt N$** : rééquilibrer 4 fois plus souvent divise le risque par 2
+- [ ] **Indépendance au drift $\mu$** : la réplication élimine les anticipations
+- [ ] **Vendre de la volatilité** : $\text{P\&L} \approx \tfrac12\int_0^T \Gamma_t S_t^2\,(\sigma_{\text{impl}}^2 - \sigma_{\text{réal}}^2)\,dt$, autrement dit un pari sur la **variation quadratique**
+- [ ] **Couvrir avec la vol implicite ou avec la vol réalisée** : P&L lisse mais aléatoire, contre P&L final certain mais chemin bruité
+- [ ] **Coûts de transaction** : précision de la couverture contre coût
+- [ ] **Modèle faux** (Heston, sauts) : où la couverture en delta casse
+
+### Phase C : couverture optimale (couvrir)
+
+- [ ] **Règles classiques** sous coûts de transaction :
+  - rééquilibrage à intervalles fixes ;
+  - bandes de delta (Whalley–Wilmott) ;
+  - volatilité ajustée des coûts (Leland).
+- [ ] Comparaison des distributions de P&L : moyenne, écart-type, CVaR
+- [ ] **Bonus, deep hedging** : un réseau de neurones apprend la stratégie qui minimise la CVaR. Bat-il le delta sous Heston avec coûts ?
+
+### Phase B : vendeur adaptatif (décider)
+
+- [ ] **Mesurer la volatilité** : close-to-close, Parkinson, Garman–Klass, Yang–Zhang
+- [ ] **La prévoir** : EWMA, GARCH(1,1), HAR-RV
+- [ ] **Prime de variance** : vol implicite moins vol réalisée prévue, *le* signal du vendeur
+- [ ] **Détecter les régimes** (calme, tension, crise) : seuils sur le VIX, puis modèle de Markov caché
+- [ ] **Adapter la stratégie au régime** :
+
+  | Régime | Stratégie |
+  |---|---|
+  | Vol basse, prime de variance élevée | Vendre des straddles ou strangles couverts en delta |
+  | Vol en hausse | Réduire l'exposition vega, rééquilibrer plus souvent |
+  | Stress (VIX élevé, sauts) | Arrêter de vendre, acheter des puts hors de la monnaie en protection |
+  | Retour au calme | Revendre de la volatilité, alors chère |
+
+- [ ] **Backtest** : sur simulations d'abord (régimes connus), puis sur données réelles (S&P 500 et VIX, en incluant 2008, 2020 et 2024)
+- [ ] **Comparaison** : vendeur adaptatif contre vendeur naïf (vend toujours, couvre chaque jour)
+
+---
+
+## Structure du projet
+
+```
+OptionPricer/
+├── pricer/
+│   ├── __init__.py
+│   ├── black_scholes.py   prix, grecques, volatilité implicite
+│   ├── market.py          simulateurs de trajectoires
+│   ├── hedging.py         portefeuille autofinancé, stratégies de couverture
+│   ├── attribution.py     décomposition du P&L
+│   └── vol.py             estimation, prévision, régimes (phase B)
+├── tests/                 un fichier de test par module
+├── notebooks/             expériences et graphiques
+├── pyproject.toml
+└── README.md
+```
+
+## Installation
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install numpy scipy matplotlib pytest
+pytest -v
+```
+
+## Conventions
+
+- `T` dans les fonctions Black–Scholes = temps **restant** jusqu'à la maturité, en années.
+- `r` = taux sans risque continu ; `sigma` = volatilité annuelle (0.2 = 20 %).
+- `position = -1` : on a **vendu** l'option.
+- Une stratégie de couverture ne lit que le **passé** des prix : elle est *adaptée* à la filtration. C'est la règle d'or contre le biais d'anticipation.
+
+## Pièges à surveiller
+
+- **Biais d'anticipation** : un signal à la date $t$ n'utilise que les données jusqu'à $t$.
+- **Surapprentissage** : calibrer les seuils de régime sur une période, tester sur une autre.
+- **Queues de distribution** : vendre des options, c'est gagner souvent un peu et perdre rarement beaucoup. On regarde la **CVaR**, pas seulement la moyenne.
+- **Données d'options** : l'historique est payant. Hypothèse assumée : options repricées en Black–Scholes avec le VIX comme volatilité implicite.
+
+## Lien avec le cours
+
+| Notion du cours | Rôle dans le projet |
+|---|---|
+| Martingales, filtrations | Prix actualisé martingale sous $\mathbb Q$ ; stratégies adaptées |
+| Martingale fermée | Prix de l'option = martingale fermée par le payoff |
+| Théorème d'arrêt | Options barrières et américaines ; pas d'arbitrage par le timing |
+| Intégrale d'Itô | Gain du portefeuille $\int \varphi\,dS$ |
+| Formule d'Itô | Dynamique de $V(t,S_t)$, EDP, delta, attribution du P&L |
+| Martingale exponentielle | Prix actualisé sous $\mathbb Q$, densité de Girsanov |
+| EDS | Modèles de prix (MBG, Heston) |
+| Variation quadratique | Volatilité réalisée ; le pari du vendeur d'options |
