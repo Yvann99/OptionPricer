@@ -137,3 +137,23 @@ pytest -v
 | Martingale exponentielle | Prix actualisé sous $\mathbb Q$, densité de Girsanov |
 | EDS | Modèles de prix (MBG, Heston) |
 | Variation quadratique | Volatilité réalisée ; le pari du vendeur d'options |
+
+---
+
+## Extension : données réelles et Monte-Carlo (matières premières)
+
+| Module | Contenu |
+|---|---|
+| `pricer/data.py` | Futures réels via Yahoo Finance (café `KC=F`, cacao `CC=F`, sucre `SB=F`...), cache local dans `data/`, vol réalisée, saisonnalité, queues épaisses, détection des sauts |
+| `pricer/black76.py` | Modèle de Black-76 : options sur futures (le future est une martingale sous $\mathbb Q$) |
+| `pricer/montecarlo.py` | Prix Monte-Carlo avec intervalle de confiance, variable de contrôle, options asiatiques, barrières, lookback, grecques par différences finies |
+| `pricer/closed_forms.py` | Formules de référence : asiatique géométrique (Kemna–Vorst), Merton (série) |
+| `pricer/calibration.py` | Estimation des modèles MBG, Merton (sauts) et Schwartz (retour à la moyenne) |
+
+```bash
+pip install -r requirements.txt
+python examples/coffee_analysis.py            # café (nécessite internet au 1er lancement)
+python examples/coffee_analysis.py --ticker CC=F   # cacao
+```
+
+**Limite assumée :** les historiques de prix d'options sur matières premières ne sont pas disponibles gratuitement. On price donc avec la volatilité *réalisée* et des modèles calibrés sur l'historique du future, pas avec une volatilité implicite de marché.

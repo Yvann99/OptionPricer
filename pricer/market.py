@@ -156,3 +156,31 @@ def merton_jump(S0, mu, sigma, lam, jump_mean, jump_std, T, n_steps, n_paths, se
     incr = (mu - lam * k - 0.5 * sigma**2) * dt + sigma * np.sqrt(dt) * Z + J
     logS = np.concatenate([np.zeros((n_paths, 1)), np.cumsum(incr, axis=1)], axis=1)
     return Paths(_grid(T, n_steps), S0 * np.exp(logS), {"n_jumps": N})
+
+
+def schwartz(S0, kappa, theta, sigma, T, n_steps, n_paths, seed=None) -> Paths:
+    """Modèle de Schwartz à un facteur : RETOUR À LA MOYENNE du log-prix.
+
+        d(ln S) = kappa (theta - ln S) dt + sigma dW
+
+    ln S est un processus d'Ornstein–Uhlenbeck : il est tiré vers le niveau theta
+    avec la force kappa. Intuition matières premières : quand le café est très cher,
+    les producteurs plantent plus et les consommateurs substituent, donc l'offre et
+    la demande ramènent le prix vers un niveau « normal ».
+    Demi-vie d'un écart : ln(2) / kappa.
+
+    Schéma EXACT (la loi de transition d'un OU est gaussienne connue) :
+        x_{t+dt} = x_t e^{-kappa dt} + theta (1 - e^{-kappa dt})
+                   + sigma sqrt((1 - e^{-2 kappa dt}) / (2 kappa)) Z
+    Modèle de monde RÉEL (sous P), pour des scénarios de prix, pas pour le pricing.
+    """
+    rng = _rng(seed)
+    dt = T / n_steps
+    a = np.exp(-kappa * dt)
+    sd = sigma * np.sqrt((1 - a**2) / (2 * kappa))
+    x = np.empty((n_paths, n_steps + 1))
+    x[:, 0] = np.log(S0)
+    Z = rng.standard_normal((n_paths, n_steps))
+    for i in range(n_steps):
+        x[:, i + 1] = x[:, i] * a + theta * (1 - a) + sd * Z[:, i]
+    return Paths(_grid(T, n_steps), np.exp(x))
