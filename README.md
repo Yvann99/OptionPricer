@@ -29,32 +29,45 @@ L'ordre est volontaire : **A → C → B**. C reste dans le cadre de A (une opti
 
 | Statut | Étape | Fichier | Contenu | Lien avec le cours |
 |---|---|---|---|---|
-| ⬜ | **1. Prix** | `pricer/black_scholes.py` | Payoff, $d_1$, $d_2$, prix d'un call et d'un put | Prix = $\mathbb E^{\mathbb Q}[e^{-rT}h(S_T)]$ |
-| ⬜ | **2. Grecques** | `pricer/black_scholes.py` | Delta, gamma, vega, theta, volatilité implicite | Dérivées du prix, EDP de Black–Scholes |
-| ⬜ | **3. Vectorisation** | `pricer/black_scholes.py` | Pricer des milliers de cas d'un coup (numpy) | Indispensable pour la suite |
-| ⬜ | **4. Simulateurs** | `pricer/market.py` | MBG, Heston, MBG à régimes, Merton (sauts) | EDS, mouvement brownien géométrique |
-| ⬜ | **5. Couverture** | `pricer/hedging.py` | Portefeuille autofinancé : prime, delta, rééquilibrage, coûts | Intégrale d'Itô $\int \varphi\,dS$, processus adaptés |
-| ⬜ | **6. Attribution** | `pricer/attribution.py` | P&L décomposé en delta, gamma, theta, carry, coûts | Formule d'Itô discrète |
+| ✅ | **1. Prix** | `pricer/black_scholes.py` | Payoff, $d_1$, $d_2$, prix d'un call et d'un put | Prix = $\mathbb E^{\mathbb Q}[e^{-rT}h(S_T)]$ |
+| ✅ | **2. Grecques** | `pricer/black_scholes.py` | Delta, gamma, vega, theta, volatilité implicite | Dérivées du prix, EDP de Black–Scholes |
+| ✅ | **3. Vectorisation** | `pricer/black_scholes.py` | Pricer des milliers de cas d'un coup (numpy) | Indispensable pour la suite |
+| ✅ | **4. Simulateurs** | `pricer/market.py` | MBG, Heston, MBG à régimes, Merton (sauts) | EDS, mouvement brownien géométrique |
+| ✅ | **5. Couverture** | `pricer/hedging.py` | Portefeuille autofinancé : prime, delta, rééquilibrage, coûts | Intégrale d'Itô $\int \varphi\,dS$, processus adaptés |
+| ✅ | **6. Attribution** | `pricer/attribution.py` | P&L décomposé en delta, gamma, theta, carry, coûts | Formule d'Itô discrète |
 
 **Tests de validation du socle** (chacun vérifie une vérité indépendante du code) :
-- [ ] Valeurs de référence (Hull) : call $= 4{,}7594$, put $= 0{,}8086$
-- [ ] Parité call-put : $C - P = S - Ke^{-rT}$
-- [ ] Grecques ≈ différences finies
-- [ ] EDP de Black–Scholes : $\Theta + rS\Delta + \tfrac12\sigma^2S^2\Gamma - rV = 0$
-- [ ] Monte-Carlo sous $\mathbb Q$ ≈ formule fermée
-- [ ] Prix actualisé martingale sous $\mathbb Q$ : $\mathbb E[e^{-rt}S_t] = S_0$
-- [ ] Volatilité réalisée ≈ $\sqrt{[\log S]_T / T}$ (variation quadratique)
+- [x] Valeurs de référence (Hull) : call $= 4{,}7594$, put $= 0{,}8086$
+- [x] Parité call-put : $C - P = S - Ke^{-rT}$
+- [x] Grecques ≈ différences finies
+- [x] EDP de Black–Scholes : $\Theta + rS\Delta + \tfrac12\sigma^2S^2\Gamma - rV = 0$
+- [x] Monte-Carlo sous $\mathbb Q$ ≈ formule fermée
+- [x] Prix actualisé martingale sous $\mathbb Q$ : $\mathbb E[e^{-rt}S_t] = S_0$
+- [x] Volatilité réalisée ≈ $\sqrt{[\log S]_T / T}$ (variation quadratique)
 
 ### Phase A : anatomie du P&L (comprendre)
 
-Des expériences dont on **connaît le résultat théorique** :
+Des expériences dont on **connaît le résultat théorique** : `pricer/experiments.py`, tests dans `tests/test_experiments.py`, figure produite par `python examples/phase_a.py` (ou `python main.py phasea`).
 
-- [ ] **Erreur de couverture en $1/\sqrt N$** : rééquilibrer 4 fois plus souvent divise le risque par 2
-- [ ] **Indépendance au drift $\mu$** : la réplication élimine les anticipations
-- [ ] **Vendre de la volatilité** : $\text{P\&L} \approx \tfrac12\int_0^T \Gamma_t S_t^2\,(\sigma_{\text{impl}}^2 - \sigma_{\text{réal}}^2)\,dt$, autrement dit un pari sur la **variation quadratique**
-- [ ] **Couvrir avec la vol implicite ou avec la vol réalisée** : P&L lisse mais aléatoire, contre P&L final certain mais chemin bruité
-- [ ] **Coûts de transaction** : précision de la couverture contre coût
-- [ ] **Modèle faux** (Heston, sauts) : où la couverture en delta casse
+- [x] **Erreur de couverture en $1/\sqrt N$** : rééquilibrer 4 fois plus souvent divise le risque par 2
+- [x] **Indépendance au drift $\mu$** : la réplication élimine les anticipations
+- [x] **Vendre de la volatilité** : $\text{P\&L} \approx \tfrac12\int_0^T \Gamma_t S_t^2\,(\sigma_{\text{impl}}^2 - \sigma_{\text{réal}}^2)\,dt$, autrement dit un pari sur la **variation quadratique**
+- [x] **Couvrir avec la vol implicite ou avec la vol réalisée** : P&L lisse mais aléatoire, contre P&L final certain mais chemin bruité
+- [x] **Coûts de transaction** : précision de la couverture contre coût
+- [x] **Modèle faux** (Heston, sauts) : où la couverture en delta casse
+
+![Phase A](figures/phase_a.png)
+
+**Ce qu'on en retient** (call ATM 6 mois, vol 20 %, 10 000 trajectoires) :
+
+| Expérience | Résultat |
+|---|---|
+| Erreur contre N | Pente log-log de −0,49 sous MBG. Sous Heston et avec sauts, la pente est d'environ −0,05 : l'erreur **plafonne** vers 1,8, et rééquilibrer plus souvent ne sert plus à rien. |
+| Drift | Couvert, le P&L moyen reste à 0 ± 0,05 pour μ de −30 % à +50 %. Non couvert, il va de +5,2 à −22,6. |
+| Pari sur la vol | Vendu à 25 % avec une vol réalisée de 15 % : P&L de +2,82. La formule ½ Σ Γ S² (σ_impl² dt − (dS/S)²) prédit chaque trajectoire avec une corrélation de 0,998. |
+| Vol implicite ou réalisée | Même gain moyen (2,82, verrouillé). L'écart-type final vaut 0,86 en couvrant à σ_impl contre 0,33 en couvrant à σ_réal (ce reste n'est que la discrétisation), mais dans le second cas le livre est bruité en cours de route. |
+| Coûts (20 pb) | Rééquilibrer chaque jour coûte 0,82 avec un écart-type de 0,53. Chaque semaine : 0,42 et 0,98. On obtient une frontière risque/coût, sans optimum évident, ce qui motive la phase C. |
+| Modèle faux | La CVaR 5 % passe de −1,0 (MBG) à −4,4 (Heston) et −5,2 (sauts), avec un skew de −1,8 : la queue gauche du vendeur vient de ce que le delta ne couvre pas. |
 
 ### Phase C : couverture optimale (couvrir)
 
@@ -95,6 +108,7 @@ OptionPricer/
 │   ├── market.py          simulateurs de trajectoires
 │   ├── hedging.py         portefeuille autofinancé, stratégies de couverture
 │   ├── attribution.py     décomposition du P&L
+│   ├── experiments.py     phase A : expériences sur le P&L du vendeur couvert
 │   └── vol.py             estimation, prévision, régimes (phase B)
 ├── tests/                 un fichier de test par module
 ├── notebooks/             expériences et graphiques

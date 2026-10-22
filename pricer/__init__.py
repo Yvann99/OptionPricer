@@ -8,16 +8,17 @@ Modules :
     montecarlo     pricing Monte-Carlo, réduction de variance, options exotiques
     hedging        portefeuille autofinancé et stratégies de couverture
     attribution    décomposition du P&L par grecque
+    experiments    phase A : anatomie du P&L d'un vendeur couvert
     calibration    estimation des modèles sur données réelles
     data           données Yahoo Finance (à importer explicitement : `from pricer import data`,
                    car il nécessite pandas et yfinance)
 """
 
-from . import (attribution, black76, black_scholes, calibration, closed_forms, hedging,
-               market, montecarlo)
+from . import (attribution, black76, black_scholes, calibration, closed_forms, experiments,
+               hedging, market, montecarlo)
 from .hedging import DeltaHedge, NoHedge, OptionSpec, run_hedge
 
 __all__ = ["attribution", "black76", "black_scholes", "calibration", "closed_forms",
-           "hedging", "market", "montecarlo",
+           "experiments", "hedging", "market", "montecarlo",
            "DeltaHedge", "NoHedge", "OptionSpec", "run_hedge"]
-__version__ = "0.2.0"
+__version__ = "0.3.0"

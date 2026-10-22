@@ -15,6 +15,7 @@ Sections :
             variable de contrôle, convergence, grecques par bump
     hedge   Couverture : DeltaHedge, NoHedge, run_hedge, résumé du P&L
     attrib  Attribution du P&L par grecque
+    phasea  Phase A : 1/√N, drift, pari sur la vol, vol implicite/réalisée, coûts, modèle faux
     calib   Calibration MBG / Merton / Schwartz sur trajectoires simulées
     data    Données réelles Yahoo Finance (internet au premier lancement)
 """
@@ -25,7 +26,8 @@ import sys
 import numpy as np
 
 from pricer import (DeltaHedge, NoHedge, OptionSpec, attribution, black76, black_scholes as bs,
-                    calibration as cal, closed_forms as cf, market, montecarlo as mc, run_hedge)
+                    calibration as cal, closed_forms as cf, experiments as ex, market,
+                    montecarlo as mc, run_hedge)
 
 
 def section(title):
@@ -172,6 +174,48 @@ def run_attrib(a):
         print(f"   {k:9s} {m:+8.4f}  (écart-type {s:.4f})")
 
 
+def run_phase_a(a):
+    n, m = int(round(a.T * 252)), min(a.paths, 10_000)
+    opt = OptionSpec(a.K, a.T, a.option)
+    section(f"PHASE A : ANATOMIE DU P&L  ({m} trajectoires, vol {a.sigma:.0%})")
+    lam, jm, js = 2.0, -0.08, 0.05
+    sims = {
+        "MBG (BS)": lambda k, s: market.gbm(a.S0, 0.05, a.sigma, a.T, k, m, seed=s),
+        "Heston": lambda k, s: market.heston(a.S0, a.sigma**2, 0.05, 2.0, a.sigma**2, 0.6, -0.7,
+                                             a.T, k, m, seed=s),
+        "Merton (sauts)": lambda k, s: market.merton_jump(
+            a.S0, 0.05, np.sqrt(max(a.sigma**2 - lam * (jm**2 + js**2), 1e-4)), lam, jm, js, a.T, k, m, seed=s),
+    }
+    Ns = [10, 50, 250]
+    print("1. Écart-type du P&L pour N =", Ns)
+    for name, sim in sims.items():
+        err = ex.error_vs_n(sim, opt, a.r, a.sigma, Ns)
+        print(f"   {name:15s} {np.round(err, 3)}  pente {ex.slope_loglog(Ns, err):+.2f}")
+
+    d = ex.drift_independence(lambda mu, k, s: market.gbm(a.S0, mu, a.sigma, a.T, k, m, seed=s),
+                              opt, a.r, a.sigma, [-0.2, 0.2], n_steps=n)
+    print(f"2. Drift -20 % / +20 %   : couvert {d['hedged'][0]['mean']:+.3f} / {d['hedged'][1]['mean']:+.3f}, "
+          f"non couvert {d['naked'][0]['mean']:+.3f} / {d['naked'][1]['mean']:+.3f}")
+
+    s_impl, s_real = a.sigma + 0.05, a.sigma - 0.05
+    p = market.gbm(a.S0, 0.05, s_real, a.T, n, m, seed=3)
+    v = ex.vol_bet(p, opt, a.r, s_impl)
+    print(f"3. Vendu {s_impl:.0%}, réalisé {s_real:.0%} : P&L moyen {v['pnl'].mean():+.3f}, "
+          f"théorie {v['theory'].mean():+.3f}, corrélation {np.corrcoef(v['pnl'], v['theory'])[0, 1]:.4f}")
+
+    iv = ex.implied_vs_realized(p, opt, a.r, s_impl, s_real)
+    print(f"4. Gain verrouillé {iv['locked_in']:.3f} | couvert à σ_impl : écart-t {iv['implied'].pnl.std():.3f}"
+          f" | couvert à σ_réal : écart-t {iv['realized'].pnl.std():.3f}")
+
+    print("5. Coûts 20 pb, rééquilibrage tous les … jours :")
+    for x in ex.cost_tradeoff(sims["MBG (BS)"](n, 5), opt, a.r, a.sigma, 0.002, [1, 5, 25]):
+        print(f"   {x['every']:3d} j  moyenne {x['mean']:+.3f}  écart-t {x['std']:.3f}")
+
+    print("6. Modèle faux (couverture BS à vol constante) :")
+    for name, s in ex.model_comparison({k: f(n, 6) for k, f in sims.items()}, opt, a.r, a.sigma).items():
+        print(f"   {name:15s} écart-t {s['std']:.3f}  CVaR5% {s['cvar05']:+.3f}  skew {s['skew']:+.2f}")
+
+
 def run_calib(a):
     section("CALIBRATION  (sur une trajectoire simulée de 20 ans : on doit retrouver les paramètres)")
     T, n = 20.0, 20 * 252
@@ -219,6 +263,7 @@ SECTIONS = {
     "mc": ("Monte-Carlo et exotiques", run_mc),
     "hedge": ("Couverture dynamique", run_hedge_section),
     "attrib": ("Attribution du P&L", run_attrib),
+    "phasea": ("Phase A : anatomie du P&L", run_phase_a),
     "calib": ("Calibration", run_calib),
     "data": ("Données réelles (internet)", run_data),
 }
