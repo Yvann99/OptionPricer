@@ -1,8 +1,8 @@
-# OptionPricer
+# OptionPricer : le café
 
-**Le métier de vendeur d'options, en Python : pricing, couverture dynamique et lecture de la volatilité.**
+**Prix, volatilité et options sur le café (arabica et robusta), reconstruits pas à pas en Python.**
 
-> **Question du projet :** un vendeur d'options qui couvre intelligemment et lit l'état de la volatilité fait-il mieux qu'un vendeur naïf ?
+> **Question du projet :** sur les 20 dernières années, comment le prix du café, sa volatilité et le P&L d'un vendeur d'options couvert sont-ils liés ?
 
 ---
 
@@ -10,118 +10,109 @@
 
 > **Le prix d'une option est le coût de sa réplication. Un vendeur couvert ne parie donc pas sur la direction du marché, mais sur sa volatilité.**
 
-Chaque phase du projet creuse une facette de cette phrase :
+Le café se prête bien à l'exercice : un marché étroit, une offre concentrée (Brésil, Vietnam), des chocs climatiques (gel, sécheresse) et donc des **sauts** et des **régimes de volatilité** bien marqués.
 
-| Phase | Verbe | Question |
-|---|---|---|
-| **0. Socle** | construire | Les outils : pricer, simulateurs, moteur de couverture |
-| **A. Anatomie du P&L** | comprendre | D'où viennent les gains et pertes d'un vendeur couvert ? |
-| **C. Couverture optimale** | couvrir | Quelle est la meilleure façon de rééquilibrer ? |
-| **B. Vendeur adaptatif** | décider | Quoi vendre, et quand, selon l'état de la volatilité ? |
+## Méthode de travail
 
-L'ordre est volontaire : **A → C → B**. C reste dans le cadre de A (une option, plusieurs règles de couverture). B change d'échelle (un portefeuille dans le temps) et réutilise la meilleure couverture trouvée en C.
+L'objectif est d'**apprendre**, pas seulement d'obtenir des résultats. Chaque étape suit la même boucle :
+
+1. **Le concept** : ce qu'on calcule, et pourquoi.
+2. **Le code**, écrit par moi (Yvann). Claude relit, pose des questions, pointe les erreurs, sans donner la solution tout de suite.
+3. **Un test** qui vérifie une vérité indépendante du code.
+4. **Une conclusion** sur les données, notée dans ce README.
+
+Seul l'outillage sans intérêt pédagogique (cache, mise en forme) est écrit par Claude.
+
+---
+
+## Le socle conservé
+
+Ces quatre modules existent déjà. Il faut se les **réapproprier** : les relire, savoir les expliquer, réécrire certains morceaux.
+
+| Maîtrisé | Module | Contenu | Lien avec le cours |
+|---|---|---|---|
+| [ ] | `pricer/black_scholes.py` | Payoff, $d_1$, $d_2$, prix, grecques, vol implicite (vectorisé) | Prix $= \mathbb E^{\mathbb Q}[e^{-rT}h(S_T)]$, EDP de Black–Scholes |
+| [ ] | `pricer/market.py` | Simulateurs : MBG, Heston, MBG à régimes, Merton (sauts) | EDS, mouvement brownien géométrique |
+| [ ] | `pricer/hedging.py` | Portefeuille autofinancé : prime, delta, rééquilibrage, coûts | Intégrale d'Itô $\int \varphi\,dS$, processus adaptés |
+| [ ] | `pricer/attribution.py` | P&L décomposé en delta, gamma, theta, carry, coûts | Formule d'Itô discrète |
+
+**Tests du socle** (`pytest -v`, 27 tests) : valeurs de référence de Hull, parité call-put, grecques ≈ différences finies, EDP de Black–Scholes, Monte-Carlo ≈ formule fermée, martingale sous $\mathbb Q$, vol réalisée ≈ variation quadratique, erreur de couverture en $1/\sqrt N$, indépendance au drift, attribution qui somme au P&L total, stratégie qui ne voit pas le futur.
 
 ---
 
 ## Feuille de route
 
-### Phase 0 : le socle
+### Étape 1 : les prix
 
-| Statut | Étape | Fichier | Contenu | Lien avec le cours |
-|---|---|---|---|---|
-| ✅ | **1. Prix** | `pricer/black_scholes.py` | Payoff, $d_1$, $d_2$, prix d'un call et d'un put | Prix = $\mathbb E^{\mathbb Q}[e^{-rT}h(S_T)]$ |
-| ✅ | **2. Grecques** | `pricer/black_scholes.py` | Delta, gamma, vega, theta, volatilité implicite | Dérivées du prix, EDP de Black–Scholes |
-| ✅ | **3. Vectorisation** | `pricer/black_scholes.py` | Pricer des milliers de cas d'un coup (numpy) | Indispensable pour la suite |
-| ✅ | **4. Simulateurs** | `pricer/market.py` | MBG, Heston, MBG à régimes, Merton (sauts) | EDS, mouvement brownien géométrique |
-| ✅ | **5. Couverture** | `pricer/hedging.py` | Portefeuille autofinancé : prime, delta, rééquilibrage, coûts | Intégrale d'Itô $\int \varphi\,dS$, processus adaptés |
-| ✅ | **6. Attribution** | `pricer/attribution.py` | P&L décomposé en delta, gamma, theta, carry, coûts | Formule d'Itô discrète |
+- [ ] Télécharger l'historique quotidien de l'**arabica** (ICE US, `KC=F` sur Yahoo Finance, en cents US par livre)
+- [ ] Trouver une source pour le **robusta** (ICE Londres, en USD par tonne)
+- [ ] Mettre en cache localement (`data/`), pour des résultats reproductibles et sans internet
+- [ ] Nettoyer : jours manquants, valeurs aberrantes, sauts artificiels liés au **roll** des contrats futures
+- [ ] Rendre les deux séries comparables (unités, devises)
 
-**Tests de validation du socle** (chacun vérifie une vérité indépendante du code) :
-- [x] Valeurs de référence (Hull) : call $= 4{,}7594$, put $= 0{,}8086$
-- [x] Parité call-put : $C - P = S - Ke^{-rT}$
-- [x] Grecques ≈ différences finies
-- [x] EDP de Black–Scholes : $\Theta + rS\Delta + \tfrac12\sigma^2S^2\Gamma - rV = 0$
-- [x] Monte-Carlo sous $\mathbb Q$ ≈ formule fermée
-- [x] Prix actualisé martingale sous $\mathbb Q$ : $\mathbb E[e^{-rt}S_t] = S_0$
-- [x] Volatilité réalisée ≈ $\sqrt{[\log S]_T / T}$ (variation quadratique)
+### Étape 2 : la volatilité historique
 
-### Phase A : anatomie du P&L (comprendre)
+- [ ] Rendements logarithmiques et volatilité réalisée annualisée (fenêtres de 20, 60 et 252 jours)
+- [ ] Lien avec la variation quadratique : $\sigma_{\text{réal}}^2 \approx [\log S]_T / T$
+- [ ] Estimateurs plus fins si on a les prix haut/bas : Parkinson, Garman–Klass
+- [ ] Queues épaisses, sauts, saisonnalité (récoltes, gel brésilien)
 
-Des expériences dont on **connaît le résultat théorique** : `pricer/experiments.py`, tests dans `tests/test_experiments.py`, figure produite par `python examples/phase_a.py` (ou `python main.py phasea`).
+### Étape 3 : la volatilité implicite
 
-- [x] **Erreur de couverture en $1/\sqrt N$** : rééquilibrer 4 fois plus souvent divise le risque par 2
-- [x] **Indépendance au drift $\mu$** : la réplication élimine les anticipations
-- [x] **Vendre de la volatilité** : $\text{P\&L} \approx \tfrac12\int_0^T \Gamma_t S_t^2\,(\sigma_{\text{impl}}^2 - \sigma_{\text{réal}}^2)\,dt$, autrement dit un pari sur la **variation quadratique**
-- [x] **Couvrir avec la vol implicite ou avec la vol réalisée** : P&L lisse mais aléatoire, contre P&L final certain mais chemin bruité
-- [x] **Coûts de transaction** : précision de la couverture contre coût
-- [x] **Modèle faux** (Heston, sauts) : où la couverture en delta casse
+- [ ] Récupérer des prix d'options sur le café (source à déterminer, voir ci-dessous)
+- [ ] Options sur futures : passer de Black–Scholes à **Black-76** (le future est une martingale sous $\mathbb Q$)
+- [ ] Inverser la formule pour obtenir la **vol implicite**, puis le smile par strike
+- [ ] Comparer vol implicite et vol réalisée : la **prime de variance**
 
-![Phase A](figures/phase_a.png)
+### Étape 4 : l'analyse sur 20 ans
 
-**Ce qu'on en retient** (call ATM 6 mois, vol 20 %, 10 000 trajectoires) :
+- [ ] Tendances de long terme du prix et de la volatilité, arabica contre robusta
+- [ ] Régimes de volatilité : calme, tension, crise (gel de 2021, flambée de 2024…)
+- [ ] Relation prix/vol : la vol monte-t-elle quand le prix monte (effet inverse de celui des actions) ?
+- [ ] **P&L d'un vendeur couvert** rejoué sur l'historique réel avec `hedging.py`, et décomposé avec `attribution.py` : quand gagne-t-il, quand perd-il ?
 
-| Expérience | Résultat |
-|---|---|
-| Erreur contre N | Pente log-log de −0,49 sous MBG. Sous Heston et avec sauts, la pente est d'environ −0,05 : l'erreur **plafonne** vers 1,8, et rééquilibrer plus souvent ne sert plus à rien. |
-| Drift | Couvert, le P&L moyen reste à 0 ± 0,05 pour μ de −30 % à +50 %. Non couvert, il va de +5,2 à −22,6. |
-| Pari sur la vol | Vendu à 25 % avec une vol réalisée de 15 % : P&L de +2,82. La formule ½ Σ Γ S² (σ_impl² dt − (dS/S)²) prédit chaque trajectoire avec une corrélation de 0,998. |
-| Vol implicite ou réalisée | Même gain moyen (2,82, verrouillé). L'écart-type final vaut 0,86 en couvrant à σ_impl contre 0,33 en couvrant à σ_réal (ce reste n'est que la discrétisation), mais dans le second cas le livre est bruité en cours de route. |
-| Coûts (20 pb) | Rééquilibrer chaque jour coûte 0,82 avec un écart-type de 0,53. Chaque semaine : 0,42 et 0,98. On obtient une frontière risque/coût, sans optimum évident, ce qui motive la phase C. |
-| Modèle faux | La CVaR 5 % passe de −1,0 (MBG) à −4,4 (Heston) et −5,2 (sauts), avec un skew de −1,8 : la queue gauche du vendeur vient de ce que le delta ne couvre pas. |
+### Étape 5 : le site interactif
 
-### Phase C : couverture optimale (couvrir)
+- [ ] Page HTML interactive pour naviguer dans les résultats : choisir la période, le café (arabica ou robusta), la fenêtre de vol, l'option vendue, et voir prix, vol et P&L se mettre à jour
 
-- [ ] **Règles classiques** sous coûts de transaction :
-  - rééquilibrage à intervalles fixes ;
-  - bandes de delta (Whalley–Wilmott) ;
-  - volatilité ajustée des coûts (Leland).
-- [ ] Comparaison des distributions de P&L : moyenne, écart-type, CVaR
-- [ ] **Bonus, deep hedging** : un réseau de neurones apprend la stratégie qui minimise la CVaR. Bat-il le delta sous Heston avec coûts ?
+---
 
-### Phase B : vendeur adaptatif (décider)
+## Données : la question ouverte
 
-- [ ] **Mesurer la volatilité** : close-to-close, Parkinson, Garman–Klass, Yang–Zhang
-- [ ] **La prévoir** : EWMA, GARCH(1,1), HAR-RV
-- [ ] **Prime de variance** : vol implicite moins vol réalisée prévue, *le* signal du vendeur
-- [ ] **Détecter les régimes** (calme, tension, crise) : seuils sur le VIX, puis modèle de Markov caché
-- [ ] **Adapter la stratégie au régime** :
+| Donnée | Source | Statut |
+|---|---|---|
+| Arabica (futures) | Yahoo Finance, `KC=F`, gratuit, depuis 2000 | Disponible |
+| Robusta (futures) | ICE Londres : mal couvert par les sources gratuites | À vérifier |
+| Taux sans risque | T-bills 13 semaines, `^IRX` sur Yahoo Finance | Disponible |
+| Options sur le café | ICE (payant). Pistes : Bloomberg ou Refinitiv via l'école, prix de règlement ICE du jour, Barchart | **À trouver** |
 
-  | Régime | Stratégie |
-  |---|---|
-  | Vol basse, prime de variance élevée | Vendre des straddles ou strangles couverts en delta |
-  | Vol en hausse | Réduire l'exposition vega, rééquilibrer plus souvent |
-  | Stress (VIX élevé, sauts) | Arrêter de vendre, acheter des puts hors de la monnaie en protection |
-  | Retour au calme | Revendre de la volatilité, alors chère |
-
-- [ ] **Backtest** : sur simulations d'abord (régimes connus), puis sur données réelles (S&P 500 et VIX, en incluant 2008, 2020 et 2024)
-- [ ] **Comparaison** : vendeur adaptatif contre vendeur naïf (vend toujours, couvre chaque jour)
+Sans historique d'options, l'analyse sur 20 ans se fait avec la vol réalisée, et la vol implicite reste un calcul ponctuel sur la chaîne d'options du jour.
 
 ---
 
 ## Structure du projet
 
 ```
-OptionPricer/
+PricerOption/
 ├── pricer/
-│   ├── __init__.py
 │   ├── black_scholes.py   prix, grecques, volatilité implicite
 │   ├── market.py          simulateurs de trajectoires
-│   ├── hedging.py         portefeuille autofinancé, stratégies de couverture
-│   ├── attribution.py     décomposition du P&L
-│   ├── experiments.py     phase A : expériences sur le P&L du vendeur couvert
-│   └── vol.py             estimation, prévision, régimes (phase B)
+│   ├── hedging.py         portefeuille autofinancé, couverture
+│   └── attribution.py     décomposition du P&L
 ├── tests/                 un fichier de test par module
-├── notebooks/             expériences et graphiques
+├── data/                  cache local des données (non versionné)
 ├── pyproject.toml
-└── README.md
+└── requirements.txt
 ```
+
+Les nouveaux modules (données, volatilité, Black-76, analyse, site) seront ajoutés au fil des étapes.
 
 ## Installation
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install numpy scipy matplotlib pytest
+pip install -r requirements.txt
 pytest -v
 ```
 
@@ -135,39 +126,6 @@ pytest -v
 ## Pièges à surveiller
 
 - **Biais d'anticipation** : un signal à la date $t$ n'utilise que les données jusqu'à $t$.
-- **Surapprentissage** : calibrer les seuils de régime sur une période, tester sur une autre.
+- **Future continu** : la série colle bout à bout des contrats d'échéances différentes. Au roll, le prix peut sauter sans que le marché ait bougé, ce qui gonfle la vol et les queues.
 - **Queues de distribution** : vendre des options, c'est gagner souvent un peu et perdre rarement beaucoup. On regarde la **CVaR**, pas seulement la moyenne.
-- **Données d'options** : l'historique est payant. Hypothèse assumée : options repricées en Black–Scholes avec le VIX comme volatilité implicite.
-
-## Lien avec le cours
-
-| Notion du cours | Rôle dans le projet |
-|---|---|
-| Martingales, filtrations | Prix actualisé martingale sous $\mathbb Q$ ; stratégies adaptées |
-| Martingale fermée | Prix de l'option = martingale fermée par le payoff |
-| Théorème d'arrêt | Options barrières et américaines ; pas d'arbitrage par le timing |
-| Intégrale d'Itô | Gain du portefeuille $\int \varphi\,dS$ |
-| Formule d'Itô | Dynamique de $V(t,S_t)$, EDP, delta, attribution du P&L |
-| Martingale exponentielle | Prix actualisé sous $\mathbb Q$, densité de Girsanov |
-| EDS | Modèles de prix (MBG, Heston) |
-| Variation quadratique | Volatilité réalisée ; le pari du vendeur d'options |
-
----
-
-## Extension : données réelles et Monte-Carlo (matières premières)
-
-| Module | Contenu |
-|---|---|
-| `pricer/data.py` | Futures réels via Yahoo Finance (café `KC=F`, cacao `CC=F`, sucre `SB=F`...), cache local dans `data/`, vol réalisée, saisonnalité, queues épaisses, détection des sauts |
-| `pricer/black76.py` | Modèle de Black-76 : options sur futures (le future est une martingale sous $\mathbb Q$) |
-| `pricer/montecarlo.py` | Prix Monte-Carlo avec intervalle de confiance, variable de contrôle, options asiatiques, barrières, lookback, grecques par différences finies |
-| `pricer/closed_forms.py` | Formules de référence : asiatique géométrique (Kemna–Vorst), Merton (série) |
-| `pricer/calibration.py` | Estimation des modèles MBG, Merton (sauts) et Schwartz (retour à la moyenne) |
-
-```bash
-pip install -r requirements.txt
-python examples/coffee_analysis.py            # café (nécessite internet au 1er lancement)
-python examples/coffee_analysis.py --ticker CC=F   # cacao
-```
-
-**Limite assumée :** les historiques de prix d'options sur matières premières ne sont pas disponibles gratuitement. On price donc avec la volatilité *réalisée* et des modèles calibrés sur l'historique du future, pas avec une volatilité implicite de marché.
+- **Unités** : l'arabica est coté en cents US par livre, le robusta en USD par tonne.

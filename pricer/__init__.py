@@ -1,24 +1,15 @@
-"""PricerOption : pricing, couverture dynamique et analyse de volatilité.
+"""PricerOption : pricing, simulation, couverture dynamique et attribution du P&L.
 
 Modules :
-    black_scholes  prix et grecques (actions)
-    black76        prix et grecques (options sur futures : café, cacao...)
-    closed_forms   formules fermées de référence (asiatique géométrique, Merton)
-    market         simulateurs : MBG, Heston, régimes, Merton, Schwartz
-    montecarlo     pricing Monte-Carlo, réduction de variance, options exotiques
+    black_scholes  prix, grecques et volatilité implicite
+    market         simulateurs de trajectoires : MBG, Heston, régimes, Merton
     hedging        portefeuille autofinancé et stratégies de couverture
     attribution    décomposition du P&L par grecque
-    experiments    phase A : anatomie du P&L d'un vendeur couvert
-    calibration    estimation des modèles sur données réelles
-    data           données Yahoo Finance (à importer explicitement : `from pricer import data`,
-                   car il nécessite pandas et yfinance)
 """
 
-from . import (attribution, black76, black_scholes, calibration, closed_forms, experiments,
-               hedging, market, montecarlo)
+from . import attribution, black_scholes, hedging, market
 from .hedging import DeltaHedge, NoHedge, OptionSpec, run_hedge
 
-__all__ = ["attribution", "black76", "black_scholes", "calibration", "closed_forms",
-           "experiments", "hedging", "market", "montecarlo",
+__all__ = ["attribution", "black_scholes", "hedging", "market",
            "DeltaHedge", "NoHedge", "OptionSpec", "run_hedge"]
-__version__ = "0.3.0"
+__version__ = "0.4.0"
