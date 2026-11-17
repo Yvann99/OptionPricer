@@ -45,7 +45,7 @@ Ces quatre modules existent déjà. Il faut se les **réapproprier** : les relir
 ### Étape 1 : les prix
 
 - [ ] Télécharger l'historique quotidien de l'**arabica** (ICE US, `KC=F` sur Yahoo Finance, en cents US par livre)
-- [ ] Trouver une source pour le **robusta** (ICE Londres, en USD par tonne)
+- [ ] Charger le **robusta** (ICE Londres, en USD par tonne) depuis le CSV d'Investing.com
 - [ ] Mettre en cache localement (`data/`), pour des résultats reproductibles et sans internet
 - [ ] Nettoyer : jours manquants, valeurs aberrantes, sauts artificiels liés au **roll** des contrats futures
 - [ ] Rendre les deux séries comparables (unités, devises)
@@ -59,7 +59,7 @@ Ces quatre modules existent déjà. Il faut se les **réapproprier** : les relir
 
 ### Étape 3 : la volatilité implicite
 
-- [ ] Récupérer des prix d'options sur le café (source à déterminer, voir ci-dessous)
+- [ ] Récupérer la chaîne d'options du jour sur l'arabica (Barchart ou prix de règlement ICE)
 - [ ] Options sur futures : passer de Black–Scholes à **Black-76** (le future est une martingale sous $\mathbb Q$)
 - [ ] Inverser la formule pour obtenir la **vol implicite**, puis le smile par strike
 - [ ] Comparer vol implicite et vol réalisée : la **prime de variance**
@@ -79,14 +79,16 @@ Ces quatre modules existent déjà. Il faut se les **réapproprier** : les relir
 
 ## Données : la question ouverte
 
+Vérifié le 17/11/2026. Pas d'accès à Bloomberg ou Refinitiv : uniquement des sources gratuites.
+
 | Donnée | Source | Statut |
 |---|---|---|
-| Arabica (futures) | Yahoo Finance, `KC=F`, gratuit, depuis 2000 | Disponible |
-| Robusta (futures) | ICE Londres : mal couvert par les sources gratuites | À vérifier |
-| Taux sans risque | T-bills 13 semaines, `^IRX` sur Yahoo Finance | Disponible |
-| Options sur le café | ICE (payant). Pistes : Bloomberg ou Refinitiv via l'école, prix de règlement ICE du jour, Barchart | **À trouver** |
+| Arabica (futures) | Yahoo Finance, `KC=F`, quotidien depuis le 03/01/2000 | ✅ Disponible |
+| Robusta (futures) | Absent de Yahoo (`RC=F`, `RM=F` introuvables). CSV quotidien à télécharger à la main sur Investing.com (« London Robusta Coffee Futures »), ou série mensuelle du *Pink Sheet* de la Banque mondiale | ⏳ Téléchargement manuel |
+| Taux sans risque | T-bills 13 semaines, `^IRX` sur Yahoo Finance | ✅ Disponible |
+| Options sur le café | Absentes de Yahoo (pas d'options sur les futures, ETN café `JO` et `CAFE` retirés de la cote). Chaîne du jour sur Barchart ou dans les prix de règlement ICE | ⚠️ Instantané du jour seulement |
 
-Sans historique d'options, l'analyse sur 20 ans se fait avec la vol réalisée, et la vol implicite reste un calcul ponctuel sur la chaîne d'options du jour.
+**Conséquence :** l'analyse sur 20 ans (prix, vol, P&L) se fait avec la **vol réalisée**. La **vol implicite** est calculée sur la chaîne d'options du jour, puis comparée à la vol réalisée actuelle : c'est la prime de variance d'aujourd'hui.
 
 ---
 
