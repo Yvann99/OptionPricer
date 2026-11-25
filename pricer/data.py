@@ -27,5 +27,10 @@ def log_returns(prices: pd.Series) -> pd.Series:
     r = np.log(prices / prices.shift(1))
     return r.dropna()
 
+#On regarde la vol annualisée à partir des log rendements
+def realized_vol(returns : pd.Series, window: int = 20) -> pd.Series:
+    """Volatilité réalisée annualisée sur une fenêtre glissante de `window` jours."""
+    vol = returns.rolling(window).std()*np.sqrt(252) #on multiplie par racine de 252 car ce sont les variances qui s'additionnent
+    return vol.dropna()
 
 
